@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { useState, useEffect, useCallback } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { Crosshair, List, Map as MapIcon, Filter, X } from 'lucide-react';
-import { mockStations } from '../../data/mockStations';
+import { Crosshair, List, Map as MapIcon, Filter, X, Zap, MapPin, Clock, CalendarCheck, Activity } from 'lucide-react';
 import { getStatusColor, getStatusLabel, getDistance } from '../../utils/helpers';
+import { generateNearbyStations } from '../../utils/generateStations';
 import StationDetail from '../station/StationDetail';
+import BookingCountdown from './BookingCountdown';
 import './MapFinder.css';
 
 function createMarkerIcon(color, slots) {
@@ -18,6 +19,32 @@ function createMarkerIcon(color, slots) {
     iconSize: [36, 44],
     iconAnchor: [18, 44],
     popupAnchor: [0, -44],
+  });
+}
+
+function createUserIcon(battery) {
+  const batteryColor = battery > 60 ? '#30D158' : battery > 25 ? '#FF9F0A' : '#FF453A';
+  const circumference = 2 * Math.PI * 18;
+  const dashoffset = circumference - (battery / 100) * circumference;
+  return L.divIcon({
+    className: 'user-location-marker',
+    html: `
+      <div class="user-marker-container">
+        <div class="user-marker-pulse"></div>
+        <svg class="user-battery-ring" width="48" height="48" viewBox="0 0 48 48">
+          <circle cx="24" cy="24" r="18" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="3.5"/>
+          <circle cx="24" cy="24" r="18" fill="none" stroke="${batteryColor}" stroke-width="3.5"
+            stroke-dasharray="${circumference}" stroke-dashoffset="${dashoffset}"
+            stroke-linecap="round" transform="rotate(-90 24 24)"/>
+        </svg>
+        <div class="user-marker-dot">
+          <span class="user-battery-text">${battery}%</span>
+        </div>
+      </div>
+    `,
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
+    popupAnchor: [0, -28],
   });
 }
 
@@ -44,18 +71,59 @@ function LocateButton({ onLocate }) {
   );
 }
 
+// Automatically centers map on user location when it changes
+function MapCenterUpdater({ center }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center) {
+      map.flyTo(center, 14, { duration: 1.5 });
+    }
+  }, [center, map]);
+  return null;
+}
+
 export default function StationMap() {
-  const [stations, setStations] = useState(mockStations);
+  const [stations, setStations] = useState([]);
   const [selectedStation, setSelectedStation] = useState(null);
   const [showList, setShowList] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
   const [userLocation, setUserLocation] = useState([31.634, 74.872]);
+  const [userLocated, setUserLocated] = useState(false);
+  const [batteryLevel] = useState(() => Math.floor(Math.random() * 60) + 20); // Simulated 20-80%
   const [filters, setFilters] = useState({
     chargerType: 'all',
     vehicleType: 'all',
     speed: 'all',
     amenities: [],
   });
+
+  // Generate stations around a location
+  const generateStationsAroundLocation = useCallback((lat, lng) => {
+    const newStations = generateNearbyStations(lat, lng, 15);
+    setStations(newStations);
+  }, []);
+
+  // Auto-detect user location on mount and generate stations
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          setUserLocation([latitude, longitude]);
+          setUserLocated(true);
+          generateStationsAroundLocation(latitude, longitude);
+        },
+        () => {
+          // Fallback: generate stations around default location
+          setUserLocated(true);
+          generateStationsAroundLocation(31.634, 74.872);
+        }
+      );
+    } else {
+      setUserLocated(true);
+      generateStationsAroundLocation(31.634, 74.872);
+    }
+  }, [generateStationsAroundLocation]);
 
   // Simulate real-time updates
   useEffect(() => {
@@ -79,6 +147,19 @@ export default function StationMap() {
     if (filters.speed !== 'all' && s.speed !== filters.speed) return false;
     return true;
   });
+
+  const handleInstantBook = () => {
+    // Find the nearest available station
+    const availableStations = filteredStations
+      .filter(s => s.availableSlots > 0)
+      .sort((a, b) =>
+        parseFloat(getDistance(userLocation[0], userLocation[1], a.lat, a.lng)) -
+        parseFloat(getDistance(userLocation[0], userLocation[1], b.lat, b.lng))
+      );
+    if (availableStations.length > 0) {
+      setSelectedStation(availableStations[0]);
+    }
+  };
 
   return (
     <div className="map-finder" id="map-finder">
@@ -129,7 +210,7 @@ export default function StationMap() {
             className="input-glass"
             id="filter-speed"
           >
-            <option value="all">Any Speed</option>
+            <option value="any">Any Speed</option>
             <option value="Fast">Fast Charging</option>
             <option value="Slow">Slow Charging</option>
           </select>
@@ -162,6 +243,9 @@ export default function StationMap() {
 
       {/* Map Area */}
       <div className="map-area">
+        {/* Booking Countdown Widget */}
+        <BookingCountdown stations={filteredStations} />
+
         <div className="map-controls">
           <button
             className={`btn btn-glass btn-sm ${!showFilters ? '' : 'active'}`}
@@ -190,29 +274,96 @@ export default function StationMap() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; OpenStreetMap'
             />
-            <LocateButton onLocate={setUserLocation} />
-            {filteredStations.map(station => (
+            <MapCenterUpdater center={userLocated ? userLocation : null} />
+            <LocateButton onLocate={(loc) => {
+              setUserLocation(loc);
+              setUserLocated(true);
+              generateStationsAroundLocation(loc[0], loc[1]);
+            }} />
+
+            {/* User Location Marker */}
+            {userLocated && (
               <Marker
-                key={station._id}
-                position={[station.lat, station.lng]}
-                icon={createMarkerIcon(getStatusColor(station), station.availableSlots)}
-                eventHandlers={{
-                  click: () => setSelectedStation(station),
-                }}
+                position={userLocation}
+                icon={createUserIcon(batteryLevel)}
+                zIndexOffset={1000}
               >
                 <Popup className="station-popup">
                   <div className="popup-content">
-                    <strong>{station.name}</strong>
-                    <div className="popup-meta">
-                      <span className={`badge badge-${station.availableSlots === 0 ? 'danger' : station.availableSlots <= 1 ? 'warning' : 'success'}`}>
-                        {station.availableSlots}/{station.totalSlots} slots
+                    <strong>📍 Your Location</strong>
+                    <div className="popup-meta" style={{ marginTop: '6px' }}>
+                      <span className={`badge badge-${batteryLevel > 60 ? 'success' : batteryLevel > 25 ? 'warning' : 'danger'}`}>
+                        🔋 {batteryLevel}% Battery
                       </span>
-                      <span>{getDistance(userLocation[0], userLocation[1], station.lat, station.lng)} km</span>
                     </div>
+                    <p style={{ fontSize: '11px', color: '#6E6E73', marginTop: '4px' }}>
+                      {batteryLevel <= 25 ? 'Low battery — charge soon!' : batteryLevel <= 60 ? 'Moderate charge remaining' : 'Battery in good shape'}
+                    </p>
                   </div>
                 </Popup>
               </Marker>
-            ))}
+            )}
+
+            {/* Station Markers */}
+            {filteredStations.map(station => {
+              const dist = getDistance(userLocation[0], userLocation[1], station.lat, station.lng);
+              return (
+                <Marker
+                  key={station._id}
+                  position={[station.lat, station.lng]}
+                  icon={createMarkerIcon(getStatusColor(station), station.availableSlots)}
+                  eventHandlers={{
+                    click: () => setSelectedStation(station),
+                  }}
+                >
+                  <Tooltip
+                    direction="top"
+                    offset={[0, -44]}
+                    className="station-tooltip"
+                    interactive={true}
+                    sticky={false}
+                  >
+                    <div className="tooltip-content">
+                      <strong className="tooltip-name">{station.name}</strong>
+                      <div className="tooltip-info">
+                        <span className={`tooltip-slots ${station.availableSlots === 0 ? 'full' : station.availableSlots <= 1 ? 'limited' : 'available'}`}>
+                          {station.availableSlots}/{station.totalSlots} slots
+                        </span>
+                        <span className="tooltip-dist">{dist} km</span>
+                      </div>
+                      <a
+                        className="tooltip-directions"
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        📍 Get Directions
+                      </a>
+                    </div>
+                  </Tooltip>
+                  <Popup className="station-popup">
+                    <div className="popup-content">
+                      <strong>{station.name}</strong>
+                      <div className="popup-meta">
+                        <span className={`badge badge-${station.availableSlots === 0 ? 'danger' : station.availableSlots <= 1 ? 'warning' : 'success'}`}>
+                          {station.availableSlots}/{station.totalSlots} slots
+                        </span>
+                        <span>{dist} km</span>
+                      </div>
+                      <a
+                        className="popup-directions"
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        📍 Get Directions
+                      </a>
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })}
           </MapContainer>
         ) : (
           <div className="list-view">
@@ -256,6 +407,43 @@ export default function StationMap() {
               ))}
           </div>
         )}
+
+        {/* Instant Station Booking Panel */}
+        <div className="instant-booking-panel" id="instant-booking-panel">
+          <div className="instant-booking-features">
+            <div className="instant-feature">
+              <div className="instant-feature-icon">
+                <MapPin size={16} />
+              </div>
+              <span>Locate nearby stations</span>
+            </div>
+            <div className="instant-feature-divider" />
+            <div className="instant-feature">
+              <div className="instant-feature-icon live">
+                <Clock size={16} />
+              </div>
+              <span>Real-time availability</span>
+            </div>
+            <div className="instant-feature-divider" />
+            <div className="instant-feature">
+              <div className="instant-feature-icon">
+                <CalendarCheck size={16} />
+              </div>
+              <span>Book & pre-book slots</span>
+            </div>
+            <div className="instant-feature-divider" />
+            <div className="instant-feature">
+              <div className="instant-feature-icon">
+                <Activity size={16} />
+              </div>
+              <span>Live traffic updates</span>
+            </div>
+          </div>
+          <button className="btn btn-primary instant-book-btn" id="instant-book-btn" onClick={handleInstantBook}>
+            <Zap size={18} />
+            Instant Book Nearest Station
+          </button>
+        </div>
       </div>
 
       {/* Station Detail Panel */}
@@ -286,7 +474,59 @@ export default function StationMap() {
           font-weight: 700;
           font-family: 'Inter', sans-serif;
         }
+
+        /* User Location Marker */
+        .user-location-marker {
+          background: none !important;
+          border: none !important;
+        }
+        .user-marker-container {
+          position: relative;
+          width: 48px;
+          height: 48px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .user-marker-pulse {
+          position: absolute;
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background: rgba(0, 113, 227, 0.15);
+          animation: userPulse 2s ease-in-out infinite;
+        }
+        @keyframes userPulse {
+          0% { transform: scale(1); opacity: 0.6; }
+          50% { transform: scale(1.6); opacity: 0; }
+          100% { transform: scale(1); opacity: 0; }
+        }
+        .user-battery-ring {
+          position: absolute;
+          top: 0;
+          left: 0;
+          filter: drop-shadow(0 2px 6px rgba(0,0,0,0.15));
+        }
+        .user-marker-dot {
+          position: absolute;
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          background: white;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .user-battery-text {
+          font-size: 9px;
+          font-weight: 700;
+          font-family: 'Inter', sans-serif;
+          color: #1D1D1F;
+          letter-spacing: -0.02em;
+        }
       `}</style>
     </div>
   );
 }
+

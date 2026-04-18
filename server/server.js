@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import dns from 'dns';
 
 import authRoutes from './routes/auth.js';
 import stationRoutes from './routes/stations.js';
@@ -10,6 +11,10 @@ import reviewRoutes from './routes/reviews.js';
 import ownerRoutes from './routes/owner.js';
 
 dotenv.config();
+
+// Use Google Public DNS to resolve MongoDB SRV records
+// This bypasses ISP/router DNS blocks on SRV lookups
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -31,7 +36,13 @@ app.get('/api/health', (req, res) => {
 });
 
 // Connect to MongoDB and start server
-mongoose.connect(process.env.MONGODB_URI)
+const mongoUri = process.env.MONGODB_URI;
+console.log('🔗 MongoDB URI loaded:', mongoUri ? `${mongoUri.substring(0, 20)}...` : '❌ UNDEFINED');
+
+mongoose.connect(mongoUri, {
+  retryWrites: true,
+  w: 'majority',
+})
   .then(() => {
     console.log('✅ Connected to MongoDB Atlas');
     app.listen(PORT, () => {

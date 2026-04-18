@@ -207,14 +207,33 @@ export default function StationDetail({ station, userLocation, onClose }) {
           </div>
 
           {/* Actions */}
-          <div className="detail-actions">
+          <div className="detail-actions" style={{ display: 'flex', gap: '8px' }}>
+            <a 
+              className="btn btn-outline detail-directions-btn"
+              href={`https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Get Directions"
+              style={{ padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Navigation size={20} color="var(--color-accent)" />
+            </a>
             {station.availableSlots > 0 ? (
-              <button className="btn btn-success btn-lg detail-book-btn" onClick={handleBook} id="book-now-btn">
+              <button 
+                className="btn btn-success btn-lg detail-book-btn" 
+                style={{ flex: 1 }} 
+                onClick={handleBook} 
+                id="book-now-btn"
+              >
                 <Zap size={18} />
                 Book Now — {formatCurrency(cost)}/est
               </button>
             ) : (
-              <button className="btn btn-primary btn-lg detail-book-btn" onClick={handleBook}>
+              <button 
+                className="btn btn-primary btn-lg detail-book-btn" 
+                style={{ flex: 1 }} 
+                onClick={handleBook}
+              >
                 Join Waitlist
               </button>
             )}

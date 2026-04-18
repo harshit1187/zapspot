@@ -1,0 +1,237 @@
+.map-finder {
+  display: flex;
+  height: calc(100vh - var(--nav-height));
+  position: relative;
+}
+
+.filter-sidebar {
+  width: 300px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-right: 1px solid rgba(0, 0, 0, 0.06);
+  padding: var(--space-lg);
+  overflow-y: auto;
+  flex-shrink: 0;
+  transition: all var(--transition-base);
+  z-index: 10;
+}
+
+.filter-sidebar:not(.open) {
+  width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: none;
+}
+
+.filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+}
+
+.filter-close {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--color-text-secondary);
+}
+
+.filter-group {
+  margin-bottom: var(--space-lg);
+}
+
+.filter-label {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-sm);
+}
+
+.amenity-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.amenity-tag {
+  padding: 6px 14px;
+  border-radius: 980px;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--color-text-secondary);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.amenity-tag.active {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  border-color: rgba(0, 113, 227, 0.2);
+}
+
+.filter-count {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.map-area {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.map-controls {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  gap: 8px;
+  z-index: 1000;
+}
+
+.map-controls .btn.active {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+}
+
+.locate-btn {
+  position: absolute;
+  bottom: 30px;
+  right: 16px;
+  z-index: 1000;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+}
+
+.popup-content {
+  font-family: 'Inter', sans-serif;
+}
+
+.popup-content strong {
+  font-size: 13px;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.popup-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+/* List View */
+.list-view {
+  padding: var(--space-lg);
+  overflow-y: auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding-top: 60px;
+}
+
+.list-card {
+  display: flex;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  cursor: pointer;
+  align-items: center;
+}
+
+.list-card-img {
+  width: 100px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: var(--glass-radius-sm);
+  flex-shrink: 0;
+}
+
+.list-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.list-card-info h4 {
+  font-size: var(--font-size-sm);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.list-card-info > p {
+  font-size: var(--font-size-xs);
+  margin-bottom: 6px;
+}
+
+.list-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.list-distance {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.list-card-types {
+  display: flex;
+  gap: 4px;
+}
+
+.charger-type-tag {
+  padding: 2px 8px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.list-card-price {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.price-value {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.price-unit {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 768px) {
+  .filter-sidebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    z-index: 20;
+    width: 100%;
+    max-width: 300px;
+  }
+  .filter-sidebar:not(.open) {
+    transform: translateX(-100%);
+  }
+  .list-card-img { width: 80px; height: 60px; }
+}

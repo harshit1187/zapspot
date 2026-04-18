@@ -1,0 +1,348 @@
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { X, Calendar, CreditCard, Smartphone, Wallet, CheckCircle, Zap, Download } from 'lucide-react';
+import QRCode from 'qrcode';
+import { useBooking } from '../../context/BookingContext';
+import { useAuth } from '../../context/AuthContext';
+import { generateTimeSlots, formatCurrency } from '../../utils/helpers';
+import { generateReceipt } from '../../utils/receipt';
+import './BookingModal.css';
+
+function SlotCalendar({ selectedDate, onSelectDate }) {
+  const today = new Date();
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+
+  const prevMonth = () => {
+    if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1); }
+    else setCurrentMonth(m => m - 1);
+  };
+
+  const nextMonth = () => {
+    if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y => y + 1); }
+    else setCurrentMonth(m => m + 1);
+  };
+
+  const isToday = (day) => {
+    return day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
+  };
+
+  const isPast = (day) => {
+    const date = new Date(currentYear, currentMonth, day);
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    return date < todayStart;
+  };
+
+  const formatDate = (day) => {
+    return `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="calendar">
+      <div className="calendar-header">
+        <button onClick={prevMonth} className="cal-nav">‹</button>
+        <span className="cal-title">{monthNames[currentMonth]} {currentYear}</span>
+        <button onClick={nextMonth} className="cal-nav">›</button>
+      </div>
+      <div className="calendar-weekdays">
+        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+          <span key={d} className="cal-weekday">{d}</span>
+        ))}
+      </div>
+      <div className="calendar-days">
+        {Array.from({ length: firstDay }).map((_, i) => (
+          <span key={`e-${i}`} className="cal-day empty"></span>
+        ))}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
+          const dateStr = formatDate(day);
+          const past = isPast(day);
+          return (
+            <button
+              key={day}
+              className={`cal-day ${isToday(day) ? 'today' : ''} ${selectedDate === dateStr ? 'selected' : ''} ${past ? 'past' : ''}`}
+              onClick={() => !past && onSelectDate(dateStr)}
+              disabled={past}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export default function BookingModal() {
+  const { showBooking, selectedStation, selectedCharger, closeBooking, addBooking } = useBooking();
+  const { user } = useAuth();
+  const [step, setStep] = useState(1);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('upi');
+  const [booking, setBooking] = useState(null);
+  const [qrDataUrl, setQrDataUrl] = useState('');
+
+  const timeSlots = useMemo(() => {
+    if (!selectedStation) return [];
+    return generateTimeSlots(selectedStation.openingTime, selectedStation.closingTime);
+  }, [selectedStation]);
+
+  if (!showBooking || !selectedStation) return null;
+
+  const kwhEstimate = ((selectedCharger?.power || 22) * 0.5 * 0.9).toFixed(1);
+  const baseCost = Math.round(kwhEstimate * selectedStation.pricePerKwh);
+  const discount = paymentMethod === 'upi' ? 10 : 0;
+  const gst = Math.round((baseCost - discount) * 0.18);
+  const total = baseCost - discount + gst;
+
+  const handleConfirm = () => {
+    const newBooking = addBooking({
+      stationName: selectedStation.name,
+      stationId: selectedStation._id,
+      chargerId: selectedCharger?.id,
+      chargerType: selectedCharger?.type,
+      date: selectedDate,
+      timeSlot: selectedSlot?.label,
+      cost: total,
+      totalKwh: parseFloat(kwhEstimate),
+      vehicle: user?.vehicles?.[0]?.name || 'My EV',
+      discount,
+    });
+    setBooking(newBooking);
+    setStep(4);
+    // Generate QR code
+    const qrData = JSON.stringify({
+      bookingId: newBooking._id,
+      station: selectedStation.name,
+      charger: selectedCharger?.type,
+      date: selectedDate,
+      time: selectedSlot?.label,
+      cost: total,
+    });
+    QRCode.toDataURL(qrData, {
+      width: 200,
+      margin: 2,
+      color: { dark: '#1D1D1F', light: '#FFFFFF' }
+    }).then(url => setQrDataUrl(url)).catch(() => setQrDataUrl(''));
+  };
+
+  const handleClose = () => {
+    setStep(1);
+    setSelectedDate('');
+    setSelectedSlot(null);
+    setBooking(null);
+    closeBooking();
+  };
+
+  return (
+    <div className="modal-overlay" onClick={handleClose}>
+      <div className="modal-content booking-modal" onClick={e => e.stopPropagation()}>
+        <button className="modal-close" onClick={handleClose}>
+          <X size={20} />
+        </button>
+
+        {/* Progress */}
+        <div className="booking-progress">
+          {[1, 2, 3, 4].map(s => (
+            <div key={s} className={`progress-step ${step >= s ? 'active' : ''} ${step === s ? 'current' : ''}`}>
+              <div className="step-dot">{step > s ? '✓' : s}</div>
+              <span className="step-label">{['Date & Time', 'Review', 'Payment', 'Confirmed'][s - 1]}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Step 1: Date & Time */}
+        {step === 1 && (
+          <div className="booking-step">
+            <h3>Select Date & Time</h3>
+            <p className="text-secondary">Choose when you'd like to charge at {selectedStation.name}</p>
+
+            <SlotCalendar selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+
+            {selectedDate && (
+              <>
+                <label className="filter-label" style={{ marginTop: '16px' }}>Available Time Slots</label>
+                <div className="booking-slots">
+                  {timeSlots.map((slot, i) => (
+                    <button
+                      key={i}
+                      className={`booking-slot ${!slot.available ? 'unavailable' : ''} ${selectedSlot?.label === slot.label ? 'selected' : ''}`}
+                      onClick={() => slot.available && setSelectedSlot(slot)}
+                      disabled={!slot.available}
+                    >
+                      {slot.label}
+                      <span>{slot.available ? '✅' : '❌'}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <button
+              className="btn btn-primary btn-lg booking-next"
+              disabled={!selectedDate || !selectedSlot}
+              onClick={() => setStep(2)}
+            >
+              Continue
+            </button>
+          </div>
+        )}
+
+        {/* Step 2: Review */}
+        {step === 2 && (
+          <div className="booking-step">
+            <h3>Review Booking</h3>
+
+            <div className="review-summary glass-card-dark">
+              <div className="summary-row">
+                <span>Station</span>
+                <strong>{selectedStation.name}</strong>
+              </div>
+              <div className="summary-row">
+                <span>Charger</span>
+                <strong>{selectedCharger?.type} • {selectedCharger?.power}kW</strong>
+              </div>
+              <div className="summary-row">
+                <span>Date</span>
+                <strong>{selectedDate}</strong>
+              </div>
+              <div className="summary-row">
+                <span>Time</span>
+                <strong>{selectedSlot?.label}</strong>
+              </div>
+              <div className="summary-row">
+                <span>Est. Energy</span>
+                <strong>{kwhEstimate} kWh</strong>
+              </div>
+              {selectedCharger?.status !== 'available' && (
+                <div className="compatibility-warning">
+                  ⚠️ This charger is currently {selectedCharger?.status}. You'll be added to the waitlist.
+                </div>
+              )}
+            </div>
+
+            <div className="step-actions">
+              <button className="btn btn-secondary" onClick={() => setStep(1)}>Back</button>
+              <button className="btn btn-primary" onClick={() => setStep(3)}>Continue to Payment</button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Payment */}
+        {step === 3 && (
+          <div className="booking-step">
+            <h3>Payment</h3>
+
+            <div className="payment-methods">
+              <label className="filter-label">Payment Method</label>
+              <div className="method-options">
+                {[
+                  { id: 'upi', icon: Smartphone, label: 'UPI', desc: '₹10 discount' },
+                  { id: 'card', icon: CreditCard, label: 'Credit/Debit Card', desc: 'Visa, Mastercard' },
+                  { id: 'wallet', icon: Wallet, label: 'Wallet', desc: 'Paytm, PhonePe' },
+                ].map(m => (
+                  <button
+                    key={m.id}
+                    className={`method-card ${paymentMethod === m.id ? 'selected' : ''}`}
+                    onClick={() => setPaymentMethod(m.id)}
+                  >
+                    <m.icon size={20} />
+                    <div>
+                      <span className="method-name">{m.label}</span>
+                      <span className="method-desc">{m.desc}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="cost-breakdown glass-card-dark">
+              <h4>Cost Breakdown</h4>
+              <div className="cost-row">
+                <span>{kwhEstimate} kWh × ₹{selectedStation.pricePerKwh}</span>
+                <span>{formatCurrency(baseCost)}</span>
+              </div>
+              {discount > 0 && (
+                <div className="cost-row discount">
+                  <span>UPI Discount</span>
+                  <span>-{formatCurrency(discount)}</span>
+                </div>
+              )}
+              <div className="cost-row">
+                <span>GST (18%)</span>
+                <span>{formatCurrency(gst)}</span>
+              </div>
+              <div className="cost-row total">
+                <span>Total</span>
+                <strong>{formatCurrency(total)}</strong>
+              </div>
+            </div>
+
+            <div className="step-actions">
+              <button className="btn btn-secondary" onClick={() => setStep(2)}>Back</button>
+              <button className="btn btn-success btn-lg" onClick={handleConfirm}>
+                Pay {formatCurrency(total)}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Confirmation */}
+        {step === 4 && booking && (
+          <div className="booking-step confirmation">
+            <div className="confirm-icon">
+              <CheckCircle size={56} color="#30D158" />
+            </div>
+            <h3>Booking Confirmed!</h3>
+            <p className="text-secondary">Your charging slot has been reserved</p>
+
+            <div className="qr-section glass-card-dark">
+              <div className="qr-placeholder">
+                {qrDataUrl ? (
+                  <img src={qrDataUrl} alt="Booking QR Code" className="qr-image" />
+                ) : (
+                  <div className="qr-loading">Generating QR...</div>
+                )}
+              </div>
+              <p className="qr-hint">Show this QR at the station to start charging</p>
+            </div>
+
+            <div className="confirm-details glass-card-dark">
+              <div className="summary-row">
+                <span>Booking ID</span>
+                <strong>{booking._id}</strong>
+              </div>
+              <div className="summary-row">
+                <span>Station</span>
+                <strong>{booking.stationName}</strong>
+              </div>
+              <div className="summary-row">
+                <span>Date & Time</span>
+                <strong>{booking.date} • {booking.timeSlot}</strong>
+              </div>
+              <div className="summary-row">
+                <span>Amount Paid</span>
+                <strong>{formatCurrency(booking.cost)}</strong>
+              </div>
+            </div>
+
+            <div className="confirm-actions">
+              <button className="btn btn-primary btn-lg" onClick={() => generateReceipt(booking)} id="download-receipt-btn">
+                <Download size={16} />
+                Download Receipt
+              </button>
+              <button className="btn btn-secondary" onClick={handleClose}>
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

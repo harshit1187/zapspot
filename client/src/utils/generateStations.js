@@ -1,3 +1,9 @@
+import ev1 from '../assets/evstations/ev1.jpeg';
+import ev2 from '../assets/evstations/ev2.jpeg';
+import ev3 from '../assets/evstations/ev3.jpeg';
+import ev4 from '../assets/evstations/ev4.jpeg';
+import ev5 from '../assets/evstations/ev5.jpeg';
+
 // Generates realistic EV charging stations around a given location
 // Covers all charger types, vehicle types, speeds, and amenity combos
 
@@ -10,7 +16,7 @@ const STATION_TEMPLATES = [
     priceRange: [18, 22],
     slotsRange: [6, 10],
     amenities: ['Restroom', 'Cafe', 'WiFi', 'Parking', 'Lounge'],
-    image: 'https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=600&h=300&fit=crop',
+    image: ev1,
   },
   {
     prefix: 'Ather Grid',
@@ -20,7 +26,7 @@ const STATION_TEMPLATES = [
     priceRange: [8, 12],
     slotsRange: [3, 5],
     amenities: ['Parking', 'WiFi'],
-    image: 'https://images.unsplash.com/photo-1571987502227-9231b837d92a?w=600&h=300&fit=crop',
+    image: ev2,
   },
   {
     prefix: 'ChargeZone Hub',
@@ -30,7 +36,7 @@ const STATION_TEMPLATES = [
     priceRange: [20, 25],
     slotsRange: [6, 8],
     amenities: ['Restroom', 'Cafe', 'WiFi', 'Parking', 'Lounge'],
-    image: 'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=600&h=300&fit=crop',
+    image: ev3,
   },
   {
     prefix: 'EV Power Station',
@@ -40,7 +46,7 @@ const STATION_TEMPLATES = [
     priceRange: [10, 15],
     slotsRange: [3, 6],
     amenities: ['Parking'],
-    image: 'https://images.unsplash.com/photo-1606229365485-93a3b8ee0385?w=600&h=300&fit=crop',
+    image: ev4,
   },
   {
     prefix: 'GreenCharge Point',
@@ -50,7 +56,7 @@ const STATION_TEMPLATES = [
     priceRange: [14, 18],
     slotsRange: [4, 6],
     amenities: ['Parking', 'WiFi', 'Restroom'],
-    image: 'https://images.unsplash.com/photo-1617788138017-80ad40651399?w=600&h=300&fit=crop',
+    image: ev5,
   },
   {
     prefix: 'ElectraGo Station',
@@ -60,7 +66,7 @@ const STATION_TEMPLATES = [
     priceRange: [16, 20],
     slotsRange: [5, 8],
     amenities: ['Restroom', 'Cafe', 'Parking', 'WiFi'],
-    image: 'https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=600&h=300&fit=crop',
+    image: ev1,
   },
   {
     prefix: 'Bolt Charge',
@@ -70,7 +76,7 @@ const STATION_TEMPLATES = [
     priceRange: [18, 24],
     slotsRange: [4, 6],
     amenities: ['Restroom', 'Cafe', 'Parking', 'Lounge'],
-    image: 'https://images.unsplash.com/photo-1571987502227-9231b837d92a?w=600&h=300&fit=crop',
+    image: ev2,
   },
   {
     prefix: 'EcoCharge Mini',
@@ -80,7 +86,7 @@ const STATION_TEMPLATES = [
     priceRange: [8, 12],
     slotsRange: [2, 4],
     amenities: ['Parking'],
-    image: 'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=600&h=300&fit=crop',
+    image: ev3,
   },
   {
     prefix: 'PowerGrid Fast Hub',
@@ -90,7 +96,7 @@ const STATION_TEMPLATES = [
     priceRange: [16, 22],
     slotsRange: [6, 10],
     amenities: ['Restroom', 'Cafe', 'WiFi', 'Parking', 'Kids Area'],
-    image: 'https://images.unsplash.com/photo-1617788138017-80ad40651399?w=600&h=300&fit=crop',
+    image: ev4,
   },
   {
     prefix: 'Statiq Station',
@@ -100,7 +106,7 @@ const STATION_TEMPLATES = [
     priceRange: [18, 25],
     slotsRange: [4, 8],
     amenities: ['Restroom', 'WiFi', 'Parking', 'Lounge', 'Kids Area'],
-    image: 'https://images.unsplash.com/photo-1606229365485-93a3b8ee0385?w=600&h=300&fit=crop',
+    image: ev5,
   },
   {
     prefix: 'Kazam EV Point',
@@ -110,7 +116,7 @@ const STATION_TEMPLATES = [
     priceRange: [10, 14],
     slotsRange: [3, 5],
     amenities: ['Parking', 'Cafe'],
-    image: 'https://images.unsplash.com/photo-1571987502227-9231b837d92a?w=600&h=300&fit=crop',
+    image: ev1,
   },
   {
     prefix: 'Fortum Charge',
@@ -120,7 +126,7 @@ const STATION_TEMPLATES = [
     priceRange: [20, 25],
     slotsRange: [4, 6],
     amenities: ['Restroom', 'Cafe', 'WiFi', 'Parking'],
-    image: 'https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=600&h=300&fit=crop',
+    image: ev2,
   },
 ];
 

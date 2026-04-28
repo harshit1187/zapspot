@@ -176,8 +176,8 @@ const POWER_MAP = {
 
 export function generateNearbyStations(lat, lng, count = 12) {
   const stations = [];
-  // Spread stations in a ~5km radius
-  const offsetRange = 0.025; // ~2.5km in each direction
+  // Spread stations in a ~15km radius
+  const offsetRange = 0.15; // ~15km in each direction
 
   for (let i = 0; i < count; i++) {
     const template = STATION_TEMPLATES[i % STATION_TEMPLATES.length];

@@ -9,6 +9,7 @@ import stationRoutes from './routes/stations.js';
 import bookingRoutes from './routes/bookings.js';
 import reviewRoutes from './routes/reviews.js';
 import ownerRoutes from './routes/owner.js';
+import routeRoutes from './routes/route.js';
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ app.use('/api/stations', stationRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/owner', ownerRoutes);
+app.use('/api/route', routeRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

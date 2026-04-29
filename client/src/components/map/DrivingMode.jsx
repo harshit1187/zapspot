@@ -16,9 +16,11 @@ export default function DrivingMode({ routeData, routeType, station, batteryLeve
   const [elapsedSec, setElapsedSec] = useState(0);
   const [speed, setSpeed] = useState(0);
   const [gpsError, setGpsError] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
   const watchRef = useRef(null);
+  const simIdxRef = useRef(0);
 
-  const { instructions = [], distanceKm, travelTimeMin, trafficDelaySeconds = 0, arrivalTime, tollSections = [] } = routeData;
+  const { instructions = [], distanceKm, travelTimeMin, trafficDelaySeconds = 0, arrivalTime, tollSections = [], routePoints = [] } = routeData;
 
   const battEst = estimateBatteryAtArrival(batteryLevel, 40.5, parseFloat(distanceKm), 15, trafficDelaySeconds);
   const traffic = getTrafficSeverityLabel(trafficDelaySeconds);
@@ -26,6 +28,11 @@ export default function DrivingMode({ routeData, routeType, station, batteryLeve
 
   // GPS watch
   useEffect(() => {
+    if (isSimulating) {
+      if (watchRef.current) navigator.geolocation.clearWatch(watchRef.current);
+      return;
+    }
+
     if (!navigator.geolocation) { setGpsError(true); return; }
     watchRef.current = navigator.geolocation.watchPosition(pos => {
       const { latitude, longitude, speed: spd } = pos.coords;
@@ -43,8 +50,46 @@ export default function DrivingMode({ routeData, routeType, station, batteryLeve
         return prev;
       });
     }, () => setGpsError(true), { enableHighAccuracy: true, maximumAge: 3000 });
-    return () => navigator.geolocation.clearWatch(watchRef.current);
-  }, [instructions, onUpdatePosition]);
+    
+    return () => {
+      if (watchRef.current) navigator.geolocation.clearWatch(watchRef.current);
+    };
+  }, [instructions, onUpdatePosition, isSimulating]);
+
+  // Simulation Timer
+  useEffect(() => {
+    if (!isSimulating || !routePoints.length) return;
+    
+    const interval = setInterval(() => {
+      simIdxRef.current += 1;
+      if (simIdxRef.current >= routePoints.length) {
+        clearInterval(interval);
+        setSpeed(0);
+        return;
+      }
+      
+      const pt = routePoints[simIdxRef.current];
+      const lat = pt.lat || pt[0];
+      const lng = pt.lng || pt[1];
+      
+      onUpdatePosition([lat, lng]);
+      setSpeed(Math.floor(Math.random() * 8) + 42); // simulated 42-50 km/h
+      
+      // Auto-advance instructions
+      setInstrIdx(prev => {
+        for (let i = prev; i < instructions.length; i++) {
+          if (instructions[i].point) {
+            const d = haversineMeters(lat, lng, instructions[i].point[0], instructions[i].point[1]);
+            if (d < 60 && i > prev) return i;
+          }
+        }
+        return prev;
+      });
+      
+    }, 250); // Move every 250ms (4x real speed)
+    
+    return () => clearInterval(interval);
+  }, [isSimulating, routePoints, instructions, onUpdatePosition]);
 
   // Timer
   useEffect(() => {
@@ -153,8 +198,12 @@ export default function DrivingMode({ routeData, routeType, station, batteryLeve
             </div>
           </div>
 
-          <button className="dm-icon-btn dm-route-btn">
-            <Navigation size={22} style={{ transform: 'rotate(45deg)' }} />
+          <button 
+            className={`dm-icon-btn dm-route-btn ${isSimulating ? 'active' : ''}`}
+            onClick={() => setIsSimulating(!isSimulating)}
+            title={isSimulating ? 'Stop Simulation' : 'Simulate Driving'}
+          >
+            <Navigation size={22} style={{ transform: isSimulating ? 'rotate(0)' : 'rotate(45deg)', transition: 'transform 0.3s ease' }} />
           </button>
         </div>
 

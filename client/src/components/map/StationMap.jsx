@@ -467,20 +467,6 @@ export default function StationMap() {
         />
       )}
 
-      <style>{`
-        .marker-pin { width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 3px 10px rgba(0,0,0,0.2); }
-        .marker-slots { transform:rotate(45deg);color:white;font-size:12px;font-weight:700;font-family:'Inter',sans-serif; }
-        .user-location-marker,.user-location-marker * { background:none!important;border:none!important; }
-        .user-marker-container { position:relative;width:48px;height:48px;display:flex;align-items:center;justify-content:center; }
-        .user-marker-pulse { position:absolute;width:48px;height:48px;border-radius:50%;background:rgba(0,113,227,0.15);animation:userPulse 2s ease-in-out infinite; }
-        @keyframes userPulse { 0%{transform:scale(1);opacity:.6}50%{transform:scale(1.6);opacity:0}100%{transform:scale(1);opacity:0} }
-        .user-battery-ring { position:absolute;top:0;left:0;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.15)); }
-        .user-marker-dot { position:absolute;width:30px;height:30px;border-radius:50%;background:white;box-shadow:0 2px 10px rgba(0,0,0,0.18);display:flex;align-items:center;justify-content:center; }
-        .user-battery-text { font-size:9px;font-weight:700;font-family:'Inter',sans-serif;color:#1D1D1F;letter-spacing:-0.02em; }
-        .toll-marker { background:#FF9F0A;color:white;font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.2);font-family:'Inter',sans-serif;white-space:nowrap; }
-        @keyframes routeDashFlow { to { stroke-dashoffset:-40; } }
-        .route-dash-anim { animation:routeDashFlow 1.2s linear infinite; }
-      `}</style>
     </div>
   );
 }

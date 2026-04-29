@@ -223,6 +223,12 @@
   color: #0071E3; /* Apple Blue */
 }
 
+.dm-route-btn.active {
+  background: #0071E3;
+  color: white;
+  border-color: #0071E3;
+}
+
 .dm-main-stats {
   flex: 1;
   display: flex;
